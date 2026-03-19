@@ -340,6 +340,83 @@ textarea.msg-in::placeholder{color:var(--text2);opacity:0.4;}
   .back-btn{display:block !important;}
   .msg-grp{max-width:82%;}
 }
+
+/* ── NUMBER PICKER ── */
+#picker-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 32px 20px 24px;
+  background: var(--bg);
+  overflow-y: auto;
+  z-index: 30;
+}
+#picker-screen.gone { display: none; }
+
+.picker-head { text-align: center; margin-bottom: 28px; }
+.picker-head .brand-logo { margin: 0 auto 14px; }
+.picker-head h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 6px; }
+.picker-head p { color: var(--text2); font-size: 0.88rem; max-width: 320px; margin: 0 auto; line-height: 1.6; }
+
+.area-section { width: 100%; max-width: 520px; margin-bottom: 20px; }
+.area-section-title { font-size: 0.7rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.area-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.18s;
+  user-select: none;
+}
+.area-chip:hover { border-color: var(--accent); background: rgba(124,109,255,0.08); }
+.area-chip.selected { border-color: var(--accent); background: rgba(124,109,255,0.15); box-shadow: 0 0 0 1px var(--accent); }
+.area-chip .code { font-family: var(--mono); font-size: 1rem; font-weight: 700; color: var(--text); letter-spacing: 1px; }
+.area-chip .region { font-size: 0.65rem; color: var(--text2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.area-chip.selected .code { color: var(--accent); }
+.area-chip.selected .region { color: var(--accent); opacity: 0.8; }
+
+.preview-box {
+  width: 100%; max-width: 520px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.preview-box .plbl { font-size: 0.7rem; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+.preview-box .pnum { font-family: var(--mono); font-size: 1.3rem; color: var(--accent3); letter-spacing: 3px; }
+.preview-box .psuffix { font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
+.reroll-btn { margin-left: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 13px; cursor: pointer; color: var(--text2); font-size: 1rem; transition: all 0.2s; flex-shrink: 0; }
+.reroll-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.claim-btn {
+  width: 100%; max-width: 520px;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent), #9966ff);
+  border: none; border-radius: 12px;
+  color: #fff; font-family: var(--font); font-size: 0.95rem; font-weight: 700;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(124,109,255,0.4);
+  transition: opacity 0.2s, transform 0.1s;
+}
+.claim-btn:hover { opacity: 0.9; }
+.claim-btn:active { transform: scale(0.98); }
+.claim-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.picker-err { color: var(--danger); font-size: 0.8rem; margin-top: 10px; text-align: center; min-height: 18px; width: 100%; max-width: 520px; }
 </style>
 </head>
 <body>
@@ -389,6 +466,43 @@ textarea.msg-in::placeholder{color:var(--text2);opacity:0.4;}
       <div class="err" id="su-err"></div>
     </div>
   </div>
+</div>
+
+
+<!-- ═══ NUMBER PICKER SCREEN ═══ -->
+<div id="picker-screen" class="gone">
+  <div class="picker-head">
+    <div class="brand-logo" style="width:56px;height:56px;border-radius:16px;font-size:24px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 30px rgba(124,109,255,0.35);">📡</div>
+    <h2>Choose your number</h2>
+    <p>Pick an area code from your region. Your full 10-digit PingLine number will be generated from it.</p>
+  </div>
+
+  <div class="area-section">
+    <div class="area-section-title">🇺🇸 United States</div>
+    <div class="area-grid" id="area-grid-us"></div>
+  </div>
+
+  <div class="area-section">
+    <div class="area-section-title">🇨🇦 Canada</div>
+    <div class="area-grid" id="area-grid-ca"></div>
+  </div>
+
+  <div class="area-section">
+    <div class="area-section-title">🌍 International Style</div>
+    <div class="area-grid" id="area-grid-intl"></div>
+  </div>
+
+  <div class="preview-box" id="preview-box" style="display:none;">
+    <div>
+      <div class="plbl">Your PingLine Number</div>
+      <div class="pnum" id="preview-num">──────────</div>
+      <div class="psuffix" id="preview-area">Select an area code above</div>
+    </div>
+    <button class="reroll-btn" onclick="rerollNumber()" title="Generate a new number with this area code">🔀</button>
+  </div>
+
+  <button class="claim-btn" id="claim-btn" onclick="claimNumber()" disabled>Claim This Number →</button>
+  <div class="picker-err" id="picker-err"></div>
 </div>
 
 <!-- ═══ APP SCREEN ═══ -->
@@ -589,7 +703,8 @@ async function doSignUp() {
 
   if (!profile) { errEl.textContent = 'Account created but profile setup failed. Try signing in.'; return; }
 
-  initApp(data.user);
+  // Show number picker instead of going straight to app
+  showPickerScreen(data.user);
 }
 
 async function signOut() {
@@ -981,6 +1096,225 @@ window.addEventListener('resize', () => {
     document.getElementById('chat-area').classList.remove('on');
   }
 });
+
+// ─── NUMBER PICKER ──────────────────────────────────────────────────────────
+const AREA_CODES = {
+  us: [
+    { code: '212', region: 'New York, NY' },
+    { code: '213', region: 'Los Angeles, CA' },
+    { code: '214', region: 'Dallas, TX' },
+    { code: '215', region: 'Philadelphia, PA' },
+    { code: '216', region: 'Cleveland, OH' },
+    { code: '240', region: 'Maryland' },
+    { code: '281', region: 'Houston, TX' },
+    { code: '303', region: 'Denver, CO' },
+    { code: '305', region: 'Miami, FL' },
+    { code: '312', region: 'Chicago, IL' },
+    { code: '313', region: 'Detroit, MI' },
+    { code: '323', region: 'Los Angeles, CA' },
+    { code: '347', region: 'New York, NY' },
+    { code: '404', region: 'Atlanta, GA' },
+    { code: '407', region: 'Orlando, FL' },
+    { code: '408', region: 'San Jose, CA' },
+    { code: '415', region: 'San Francisco, CA' },
+    { code: '424', region: 'Los Angeles, CA' },
+    { code: '440', region: 'Cleveland, OH' },
+    { code: '469', region: 'Dallas, TX' },
+    { code: '480', region: 'Phoenix, AZ' },
+    { code: '503', region: 'Portland, OR' },
+    { code: '512', region: 'Austin, TX' },
+    { code: '513', region: 'Cincinnati, OH' },
+    { code: '602', region: 'Phoenix, AZ' },
+    { code: '612', region: 'Minneapolis, MN' },
+    { code: '614', region: 'Columbus, OH' },
+    { code: '615', region: 'Nashville, TN' },
+    { code: '617', region: 'Boston, MA' },
+    { code: '619', region: 'San Diego, CA' },
+    { code: '626', region: 'Pasadena, CA' },
+    { code: '630', region: 'Chicago Suburbs' },
+    { code: '646', region: 'New York, NY' },
+    { code: '650', region: 'Silicon Valley, CA' },
+    { code: '651', region: 'St. Paul, MN' },
+    { code: '702', region: 'Las Vegas, NV' },
+    { code: '704', region: 'Charlotte, NC' },
+    { code: '713', region: 'Houston, TX' },
+    { code: '714', region: 'Orange County, CA' },
+    { code: '718', region: 'New York, NY' },
+    { code: '720', region: 'Denver, CO' },
+    { code: '725', region: 'Las Vegas, NV' },
+    { code: '737', region: 'Austin, TX' },
+    { code: '754', region: 'Fort Lauderdale, FL' },
+    { code: '757', region: 'Virginia Beach, VA' },
+    { code: '786', region: 'Miami, FL' },
+    { code: '801', region: 'Salt Lake City, UT' },
+    { code: '804', region: 'Richmond, VA' },
+    { code: '813', region: 'Tampa, FL' },
+    { code: '817', region: 'Fort Worth, TX' },
+    { code: '832', region: 'Houston, TX' },
+    { code: '843', region: 'Charleston, SC' },
+    { code: '847', region: 'Chicago Suburbs' },
+    { code: '858', region: 'San Diego, CA' },
+    { code: '859', region: 'Lexington, KY' },
+    { code: '901', region: 'Memphis, TN' },
+    { code: '904', region: 'Jacksonville, FL' },
+    { code: '916', region: 'Sacramento, CA' },
+    { code: '917', region: 'New York, NY' },
+    { code: '919', region: 'Raleigh, NC' },
+    { code: '929', region: 'New York, NY' },
+    { code: '949', region: 'Orange County, CA' },
+    { code: '954', region: 'Fort Lauderdale, FL' },
+    { code: '972', region: 'Dallas, TX' },
+    { code: '980', region: 'Charlotte, NC' },
+    { code: '983', region: 'Colorado' },
+  ],
+  ca: [
+    { code: '204', region: 'Winnipeg, MB' },
+    { code: '226', region: 'Windsor, ON' },
+    { code: '236', region: 'Vancouver, BC' },
+    { code: '249', region: 'Sudbury, ON' },
+    { code: '250', region: 'Victoria, BC' },
+    { code: '289', region: 'Hamilton, ON' },
+    { code: '306', region: 'Saskatchewan' },
+    { code: '343', region: 'Ottawa, ON' },
+    { code: '365', region: 'Ontario' },
+    { code: '403', region: 'Calgary, AB' },
+    { code: '416', region: 'Toronto, ON' },
+    { code: '418', region: 'Quebec City, QC' },
+    { code: '431', region: 'Winnipeg, MB' },
+    { code: '437', region: 'Toronto, ON' },
+    { code: '438', region: 'Montreal, QC' },
+    { code: '450', region: 'Montreal Suburbs' },
+    { code: '506', region: 'New Brunswick' },
+    { code: '514', region: 'Montreal, QC' },
+    { code: '519', region: 'London, ON' },
+    { code: '548', region: 'London, ON' },
+    { code: '579', region: 'Quebec' },
+    { code: '581', region: 'Quebec City, QC' },
+    { code: '587', region: 'Alberta' },
+    { code: '604', region: 'Vancouver, BC' },
+    { code: '613', region: 'Ottawa, ON' },
+    { code: '647', region: 'Toronto, ON' },
+    { code: '672', region: 'Vancouver, BC' },
+    { code: '705', region: 'Sudbury, ON' },
+    { code: '709', region: 'Newfoundland' },
+    { code: '778', region: 'Vancouver, BC' },
+    { code: '780', region: 'Edmonton, AB' },
+    { code: '807', region: 'Thunder Bay, ON' },
+    { code: '819', region: 'Gatineau, QC' },
+    { code: '825', region: 'Alberta' },
+    { code: '867', region: 'Territories' },
+    { code: '873', region: 'Quebec' },
+    { code: '902', region: 'Nova Scotia' },
+    { code: '905', region: 'Mississauga, ON' },
+  ],
+  intl: [
+    { code: '200', region: 'Virtual / Global' },
+    { code: '300', region: 'Virtual / Global' },
+    { code: '400', region: 'Virtual / Global' },
+    { code: '500', region: 'Virtual / Global' },
+    { code: '600', region: 'Virtual / Global' },
+    { code: '700', region: 'Virtual / Global' },
+    { code: '800', region: 'Toll-Free Style' },
+    { code: '833', region: 'Toll-Free Style' },
+    { code: '844', region: 'Toll-Free Style' },
+    { code: '855', region: 'Toll-Free Style' },
+    { code: '866', region: 'Toll-Free Style' },
+    { code: '877', region: 'Toll-Free Style' },
+    { code: '888', region: 'Toll-Free Style' },
+    { code: '900', region: 'Premium Style' },
+  ]
+};
+
+let pickerSelectedCode = null;
+let pickerGeneratedNumber = null;
+let pendingUser = null;
+
+function buildAreaGrids() {
+  function renderGrid(codes, containerId) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = '';
+    codes.forEach(({ code, region }) => {
+      const chip = document.createElement('div');
+      chip.className = 'area-chip';
+      chip.dataset.code = code;
+      chip.innerHTML = `<div class="code">${code}</div><div class="region">${region}</div>`;
+      chip.onclick = () => selectAreaCode(code, region, chip);
+      grid.appendChild(chip);
+    });
+  }
+  renderGrid(AREA_CODES.us,   'area-grid-us');
+  renderGrid(AREA_CODES.ca,   'area-grid-ca');
+  renderGrid(AREA_CODES.intl, 'area-grid-intl');
+}
+
+function selectAreaCode(code, region, chipEl) {
+  // Deselect all
+  document.querySelectorAll('.area-chip').forEach(c => c.classList.remove('selected'));
+  chipEl.classList.add('selected');
+  pickerSelectedCode = code;
+
+  // Generate a number with this area code
+  generateWithCode(code, region);
+}
+
+function generateWithCode(code, region) {
+  // 10 digits: area code (3) + 7 random digits
+  const suffix = String(Math.floor(1000000 + Math.random() * 9000000));
+  pickerGeneratedNumber = code + suffix;
+
+  const formatted = code + '-' + suffix.slice(0, 3) + '-' + suffix.slice(3);
+  document.getElementById('preview-num').textContent = pickerGeneratedNumber;
+  document.getElementById('preview-area').textContent = region + ' · ' + formatted;
+  document.getElementById('preview-box').style.display = 'flex';
+  document.getElementById('claim-btn').disabled = false;
+}
+
+function rerollNumber() {
+  if (!pickerSelectedCode) return;
+  const chip = document.querySelector('.area-chip.selected');
+  const region = chip ? chip.querySelector('.region').textContent : '';
+  generateWithCode(pickerSelectedCode, region);
+}
+
+function showPickerScreen(user) {
+  pendingUser = user;
+  buildAreaGrids();
+  document.getElementById('auth-screen').classList.add('gone');
+  document.getElementById('picker-screen').classList.remove('gone');
+}
+
+async function claimNumber() {
+  const errEl = document.getElementById('picker-err');
+  errEl.textContent = '';
+
+  if (!pickerGeneratedNumber || !pendingUser) return;
+
+  const btn = document.getElementById('claim-btn');
+  btn.disabled = true;
+  btn.textContent = 'Claiming…';
+
+  // Check number isn't taken
+  const { data: taken } = await sb.from('profiles').select('id').eq('phone_number', pickerGeneratedNumber).maybeSingle();
+  if (taken) {
+    errEl.textContent = 'That number was just taken! Hit 🔀 to try another.';
+    btn.disabled = false;
+    btn.textContent = 'Claim This Number →';
+    return;
+  }
+
+  // Update the profile's phone number (trigger created it with a random one)
+  const { error } = await sb.from('profiles').update({ phone_number: pickerGeneratedNumber }).eq('id', pendingUser.id);
+  if (error) {
+    errEl.textContent = error.message;
+    btn.disabled = false;
+    btn.textContent = 'Claim This Number →';
+    return;
+  }
+
+  // Done — go to app
+  document.getElementById('picker-screen').classList.add('gone');
+  initApp(pendingUser);
+}
 
 // Close modal on backdrop click
 document.getElementById('new-chat-overlay').addEventListener('click', function(e) {
