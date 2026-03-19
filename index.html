@@ -45,7 +45,7 @@
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
   }
 
   /* ====== SCREENS ====== */
@@ -69,6 +69,12 @@
     flex-direction: column;
     background: var(--bg);
     padding: 24px;
+    z-index: 50;
+  }
+
+  #screen-auth * {
+    position: relative;
+    z-index: 1;
   }
 
   .brand {
@@ -1153,9 +1159,11 @@ function autoResize(el) {
 }
 
 function switchTab(tab) {
-  document.getElementById('tab-login').style.display = tab === 'login' ? '' : 'none';
-  document.getElementById('tab-register').style.display = tab === 'register' ? '' : 'none';
-  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1)));
+  document.getElementById('tab-login').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('tab-register').style.display = tab === 'register' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (tab === 'login' ? i === 0 : i === 1));
+  });
 }
 
 // ===== AUTH =====
