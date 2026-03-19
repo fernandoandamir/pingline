@@ -564,21 +564,30 @@ async function doSignUp() {
   if (!name || !email || !pass) { errEl.textContent = 'Fill in all fields.'; return; }
   if (pass.length < 6)          { errEl.textContent = 'Password needs 6+ characters.'; return; }
 
-  const { data, error } = await sb.auth.signUp({ email, password: pass });
-  if (error) { errEl.textContent = error.message; return; }
+  const signupBtn = document.getElementById('signup-btn');
+  signupBtn.disabled = true;
+  signupBtn.textContent = 'Creating account…';
 
-  // Generate unique 10-digit number
-  let phone = rand10();
-  for (let i = 0; i < 6; i++) {
-    const { data: ex } = await sb.from('profiles').select('id').eq('phone_number', phone).maybeSingle();
-    if (!ex) break;
-    phone = rand10();
+  const { data, error } = await sb.auth.signUp({
+    email, password: pass,
+    options: { data: { display_name: name } }
+  });
+
+  signupBtn.disabled = false;
+  signupBtn.textContent = 'Create Account';
+
+  if (error) { errEl.textContent = error.message; return; }
+  if (!data.user) { errEl.textContent = 'Signup failed, please try again.'; return; }
+
+  // Wait for the DB trigger to fire and create the profile (retry up to 8 times)
+  let profile = null;
+  for (let i = 0; i < 8; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    const { data: p } = await sb.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
+    if (p) { profile = p; break; }
   }
 
-  const { error: pe } = await sb.from('profiles').insert({
-    id: data.user.id, display_name: name, phone_number: phone, email
-  });
-  if (pe) { errEl.textContent = pe.message; return; }
+  if (!profile) { errEl.textContent = 'Account created but profile setup failed. Try signing in.'; return; }
 
   initApp(data.user);
 }
@@ -673,7 +682,7 @@ async function openConv(convId, partner) {
   await loadMsgs(convId);
 
   if (msgSub) sb.removeChannel(msgSub);
-  msgSub = sb.channel('msgs:' + convId)
+  msgSub = sb.channel('msgs:' + convId, { config: { broadcast: { ack: false } } })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${convId}` },
       p => appendMsg(p.new))
     .subscribe();
@@ -726,8 +735,21 @@ async function loadMsgs(convId) {
   box.scrollTop = box.scrollHeight;
 }
 
-function appendMsg(m) {
+function appendMsg(m, optimistic = false) {
   const box = document.getElementById('msgs');
+
+  // Skip if this message was already optimistically rendered
+  if (!optimistic && m.sender_id === me.id) {
+    const tmpMsgs = box.querySelectorAll('.bubble[data-tmp]');
+    for (const el of tmpMsgs) {
+      if (el.textContent === m.content) {
+        el.removeAttribute('data-tmp');
+        el.style.opacity = '1';
+        return; // already shown optimistically, don't duplicate
+      }
+    }
+  }
+
   const out = m.sender_id === me.id;
   let grp = box.querySelector('.msg-grp:last-child');
   if (!grp || (out && !grp.classList.contains('out')) || (!out && !grp.classList.contains('in'))) {
@@ -743,6 +765,7 @@ function appendMsg(m) {
   } else {
     b.className = 'bubble';
     b.textContent = m.content;
+    if (optimistic) { b.setAttribute('data-tmp', '1'); b.style.opacity = '0.7'; }
   }
   grp.appendChild(b);
   const t = document.createElement('div');
@@ -757,8 +780,22 @@ async function sendMsg() {
   const txt = inp.value.trim();
   if (!txt || !activeCovId) return;
   inp.value = ''; inp.style.height = 'auto';
-  await sb.from('messages').insert({ conversation_id: activeCovId, sender_id: me.id, content: txt, type: 'text' });
-  await sb.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeCovId);
+
+  // Optimistic render — show instantly, don't wait for server
+  const optimisticMsg = {
+    id: 'tmp-' + Date.now(),
+    conversation_id: activeCovId,
+    sender_id: me.id,
+    content: txt,
+    type: 'text',
+    created_at: new Date().toISOString()
+  };
+  appendMsg(optimisticMsg, true);
+
+  // Send to server in background
+  sb.from('messages').insert({ conversation_id: activeCovId, sender_id: me.id, content: txt, type: 'text' }).then(() => {
+    sb.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeCovId);
+  });
 }
 
 // ─── NEW CONVERSATION ────────────────────────────────────────────────────────
